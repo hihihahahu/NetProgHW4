@@ -68,6 +68,23 @@ def run():
             #call FindNode
             node_list = stub.FindNode(csci4220_hw4_pb2.IDKey(node = this_node, idkey = local_id))
             
+            #add nodes from the list in node_list
+            for node in node_list.nodes:
+                bit_len = ((node.id)^local_id).bit_length()
+                #pop an element if the bucket is full
+                if len(buckets[bit_len]) == k:
+                    buckets[bit_len].popleft()
+                buckets[bit_len].append(node)
+            
+            #add the node that it just sent RPC to
+            r_node = node_list.responding_node
+            bit_len = ((r_node.id)^local_id).bit_length()
+            if len(buckets[bit_len]) == k:
+                buckets[bit_len].popleft()
+            buckets[bit_len].append(r_node)
+            
+            #done (hopefully)
+            channel.close()
             
         if input_args[0] == "QUIT":
             break
