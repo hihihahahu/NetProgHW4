@@ -49,7 +49,7 @@ def run():
     #channel = grpc.insecure_channel(remote_addr + ':' + str(remote_port))
     
     while True:
-        input_str = str(raw_input())
+        input_str = str(input())
         input_args = input_str.split()
         
         if input_args[0] == "BOOTSTRAP":
@@ -95,6 +95,31 @@ def run():
                 sys.stdout.write('\n')
                 count += 1
             
+            channel.close()
+
+        if input_args[0] == "STORE":
+            print("store")
+            this_key = int(input_args[1])
+            this_value = input_args[2]
+
+            closest_node = csci4220_hw4_pb2.Node(id = local_id, port = int(my_port), address = str(my_address))
+            distance = abs(local_id - this_key)
+            for bucket in buckets:
+                for entry in bucket:
+                    if abs(int(entry.id) - this_key) < distance:
+                	    closest_node = entry
+                	    distance = abs(int(entry.id) - this_key)
+            remote_hostname = str(closest_node.id)
+            remote_port = int(closest_node.port)
+            remote_addr = socket.gethostbyname(remote_hostname)
+            
+            #connect to server & create stub
+            this_addr = "127.0.0.1" + ':' + str(remote_port)
+            channel = grpc.insecure_channel(this_addr)
+            stub = csci4220_hw4_pb2_grpc.KadImplStub(channel)
+            print(this_addr)
+            node_list = stub.Store(csci4220_hw4_pb2.KeyValue(node = None, key = this_key, value = this_value))
+
             channel.close()
             
         if input_args[0] == "QUIT":
@@ -144,6 +169,14 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
             node_list = temp_list[:(k - 1)]
             
         return csci4220_hw4_pb2.NodeList(responding_node = this_node, nodes = node_list)
+
+
+    def Store(self, request, context):
+        print("storing something")
+        global val
+        val = request.value
+        id_in = request.key
+        return csci4220_hw4_pb2.IDKey(node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = socket.gethostbyname(socket.gethostname)), idkey = int(sys.argv[1]))
         
                     
         
