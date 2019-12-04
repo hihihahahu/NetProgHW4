@@ -10,6 +10,8 @@ import grpc
 import csci4220_hw4_pb2
 import csci4220_hw4_pb2_grpc
 
+buckets = []
+
 def run():
     if len(sys.argv) != 4:
         print("Error, correct usage is {} [my id] [my port] [k]".format(sys.argv[0]))
@@ -17,8 +19,6 @@ def run():
 
     global val
     global buckets
-    buckets = []
-    
     
     local_id = int(sys.argv[1])
     my_port = str(int(sys.argv[2])) # add_insecure_port() will want a string
@@ -136,6 +136,9 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
     #Takes an ID (use shared IDKey message type) and returns k nodes with
     #distance closest to ID requested
     def FindNode(self, request, context):
+    
+        global buckets
+    
         print('Serving FindNode({}) request for {}'.format(str(request.idkey), str(request.node.id)))
         id_in = request.idkey
         k = int(sys.argv[3])
@@ -172,6 +175,9 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
         return csci4220_hw4_pb2.NodeList(responding_node = this_node, nodes = node_list)
     
     def Store(self, request, context):
+        
+        global buckets
+    
         print("storing something")
         val = request.value
         id_in = request.key
