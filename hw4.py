@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from concurrent import futures
+from collections import deque #for FIFO bucket
 import sys  # For sys.argv, sys.exit()
 import socket  # for gethostbyname()
 
@@ -14,11 +15,21 @@ def run():
         print("Error, correct usage is {} [my id] [my port] [k]".format(sys.argv[0]))
         sys.exit(-1)
 
-    bucket = []
+    global buckets
+    buckets = []
+    
     
     local_id = int(sys.argv[1])
     my_port = str(int(sys.argv[2])) # add_insecure_port() will want a string
     k = int(sys.argv[3])
+    
+    #4 buckets needed
+    i = 4
+    while i > 0:
+        #append 4 empty deques into the bucket, the deques should contain Nodes
+        buckets.append(deque([]))
+        i -= 1
+    
     my_hostname = socket.gethostname() # Gets my host name
     my_address = socket.gethostbyname(my_hostname) # Gets my IP address from my hostname
     
@@ -47,10 +58,16 @@ def run():
             remote_port = int(input_args[2])
             remote_addr = socket.gethostbyname(remote_hostname)
             
-            #connect to server
+            #connect to server & create stub
             channel = grpc.insecure_channel(remote_addr + ':' + str(remote_port))
+            stub = csci4220_hw4_pb2_grpc.KadImpStub(channel)
             
-            #FindNode(?)
+            #create the node object
+            this_node = csci4220_hw4_pb2.Node(id = local_id, port = int(my_port), address = str(my_address))
+            
+            #call FindNode
+            node_list = stub.FindNode(csci4220_hw4_pb2.IDKey(node = this_node, idkey = local_id))
+            
             
         if input_args[0] == "QUIT":
             break
@@ -62,8 +79,44 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
     def __init__(self):
         pass
     
+    #Takes an ID (use shared IDKey message type) and returns k nodes with
+    #distance closest to ID requested
     def FindNode(self, request, context):
-        pass
+        id_in = request.idkey
+        k = int(sys.argv[3])
+        count = 0
+        temp_list = deque([])
+        #look at all Nodes in bucket
+        #and insert them into the temp list
+        #in the order of their distance to the
+        #requested ID
+        for bucket in buckets:
+            for entry in bucket:
+                if count == 0:
+                    #first entry into the temp list
+                    temp_list.append(entry)
+                    count += 1
+                else:
+                    #make sure things are sorted
+                    if (int(entry.id)^int(request.idkey)) <= (int(temp_list[0].id)^int(request.idkey)):
+                        deque.appendleft(entry)
+                        count += 1
+                    else:
+                        deque.append(entry)
+                        count += 1
+        
+        this_node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = socket.gethostbyname(socket.gethostname))
+        node_list = None
+        if count <= k:
+            node_list = temp_list
+        else:
+            node_list = temp_list[:(k - 1)]
+            
+        return csci4220_hw4_pb2.NodeList(responding_node = this_node, nodes = node_list)
+        
+                    
+        
+        
         
 if __name__ == '__main__':
     run()
