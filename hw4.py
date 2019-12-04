@@ -53,14 +53,14 @@ def run():
         input_args = input_str.split()
         
         if input_args[0] == "BOOTSTRAP":
-            print("bootstrap")
-            remote_hostname = input_args[1]
+            #print("bootstrap")
+            remote_hostname = str(input_args[1])
             remote_port = int(input_args[2])
             remote_addr = socket.gethostbyname(remote_hostname)
             
             #connect to server & create stub
-            channel = grpc.insecure_channel(remote_addr + ':' + str(remote_port))
-            stub = csci4220_hw4_pb2_grpc.KadImpStub(channel)
+            channel = grpc.insecure_channel("127.0.0.1" + ':' + str(remote_port))
+            stub = csci4220_hw4_pb2_grpc.KadImplStub(channel)
             
             #create the node object
             this_node = csci4220_hw4_pb2.Node(id = local_id, port = int(my_port), address = str(my_address))
@@ -71,6 +71,7 @@ def run():
             #add nodes from the list in node_list
             for node in node_list.nodes:
                 bit_len = ((node.id)^local_id).bit_length()
+                bit_len -= 1
                 #pop an element if the bucket is full
                 if len(buckets[bit_len]) == k:
                     buckets[bit_len].popleft()
@@ -79,11 +80,21 @@ def run():
             #add the node that it just sent RPC to
             r_node = node_list.responding_node
             bit_len = ((r_node.id)^local_id).bit_length()
+            bit_len -= 1
             if len(buckets[bit_len]) == k:
                 buckets[bit_len].popleft()
             buckets[bit_len].append(r_node)
             
             #done (hopefully)
+            print('After BOOTSTRAP({}), k_buckets now look like:'.format(str(r_node.id)))
+            count = 0
+            for bucket in buckets:
+                sys.stdout.write('{}:'.format(str(count)))
+                for entry in bucket:
+                    sys.stdout.write(' {}:{}'.format(str(entry.id), str(entry.port)))
+                sys.stdout.write('\n')
+                count += 1
+            
             channel.close()
             
         if input_args[0] == "QUIT":
@@ -99,6 +110,7 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
     #Takes an ID (use shared IDKey message type) and returns k nodes with
     #distance closest to ID requested
     def FindNode(self, request, context):
+        print('Serving FindNode({}) request for {}'.format(str(request.idkey), str(request.node.id)))
         id_in = request.idkey
         k = int(sys.argv[3])
         count = 0
@@ -109,6 +121,8 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
         #requested ID
         for bucket in buckets:
             for entry in bucket:
+                if entry.id == request.node.id:
+                    continue
                 if count == 0:
                     #first entry into the temp list
                     temp_list.append(entry)
@@ -122,7 +136,7 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
                         deque.append(entry)
                         count += 1
         
-        this_node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = socket.gethostbyname(socket.gethostname))
+        this_node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = "127.0.0.1")
         node_list = None
         if count <= k:
             node_list = temp_list
