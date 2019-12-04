@@ -15,6 +15,7 @@ def run():
         print("Error, correct usage is {} [my id] [my port] [k]".format(sys.argv[0]))
         sys.exit(-1)
 
+    global val
     global buckets
     buckets = []
     
@@ -49,7 +50,7 @@ def run():
     #channel = grpc.insecure_channel(remote_addr + ':' + str(remote_port))
     
     while True:
-        input_str = str(input())
+        input_str = str(raw_input())
         input_args = input_str.split()
         
         if input_args[0] == "BOOTSTRAP":
@@ -169,18 +170,13 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
             node_list = temp_list[:(k - 1)]
             
         return csci4220_hw4_pb2.NodeList(responding_node = this_node, nodes = node_list)
-
-
+    
     def Store(self, request, context):
         print("storing something")
-        global val
         val = request.value
         id_in = request.key
-        return csci4220_hw4_pb2.IDKey(node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = socket.gethostbyname(socket.gethostname)), idkey = int(sys.argv[1]))
         
-                    
-        
-        
+        return csci4220_hw4_pb2.IDKey(node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = "127.0.0.1"), idkey = int(sys.argv[1]))
         
 if __name__ == '__main__':
     run()
