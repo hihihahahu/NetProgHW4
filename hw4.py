@@ -228,7 +228,50 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
     def FindValue(self, request, context):
         
         global buckets
+        global val
+        global val_key
         
+        k = int(sys.argv[3])
+        
+        this_node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = "127.0.0.1")
+        
+        if val_key == request.idkey:
+            print("value found with given key")
+            return csci4220_hw4_pb2.KV_Node_Wrapper(responding_node = this_node, mode_kv = True, kv = csci4220_hw4_pb2.KeyValue(node = this_node, key = val_key, value = val), nodes = None)
+            
+        count = 0
+        temp_list = deque([])
+        #look at all Nodes in bucket
+        #and insert them into the temp list
+        #in the order of their distance to the
+        #requested ID
+        for bucket in buckets:
+            for entry in bucket:
+                if entry.id == request.node.id:
+                    continue
+                if count == 0:
+                    #first entry into the temp list
+                    temp_list.append(entry)
+                    count += 1
+                else:
+                    #make sure things are sorted
+                    if (int(entry.id)^int(request.idkey)) <= (int(temp_list[0].id)^int(request.idkey)):
+                        temp_list.appendleft(entry)
+                        count += 1
+                    else:
+                        temp_list.append(entry)
+                        count += 1
+        
+        node_list = None
+        
+        if count <= k:
+            node_list = temp_list
+        else:
+            node_list = temp_list[:(k - 1)]
+        
+        print("value not found, returned a list of closest nodes")
+        
+        return csci4220_hw4_pb2.KV_Node_Wrapper(responding_node = this_node, mode_kv = False, kv = None, nodes = node_list)
         
         
     def Quit(self, request, context):
