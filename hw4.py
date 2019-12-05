@@ -192,10 +192,10 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
                 else:
                     #make sure things are sorted
                     if (int(entry.id)^int(request.idkey)) <= (int(temp_list[0].id)^int(request.idkey)):
-                        deque.appendleft(entry)
+                        temp_list.appendleft(entry)
                         count += 1
                     else:
-                        deque.append(entry)
+                        temp_list.append(entry)
                         count += 1
         
         this_node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = "127.0.0.1")
@@ -225,6 +225,12 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
         
         return csci4220_hw4_pb2.IDKey(node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = "127.0.0.1"), idkey = int(sys.argv[1]))
 
+    def FindValue(self, request, context):
+        
+        global buckets
+        
+        
+        
     def Quit(self, request, context):
     	global buckets
     	quit_id = int(request.idkey)
