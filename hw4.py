@@ -11,6 +11,8 @@ import csci4220_hw4_pb2
 import csci4220_hw4_pb2_grpc
 
 buckets = []
+val = None
+val_key = -1
 
 def run():
     if len(sys.argv) != 4:
@@ -18,6 +20,7 @@ def run():
         sys.exit(-1)
 
     global val
+    global val_key
     global buckets
     
     local_id = int(sys.argv[1])
@@ -119,11 +122,24 @@ def run():
             channel = grpc.insecure_channel(this_addr)
             stub = csci4220_hw4_pb2_grpc.KadImplStub(channel)
             print(this_addr)
-            node_list = stub.Store(csci4220_hw4_pb2.KeyValue(node = None, key = this_key, value = this_value))
+            some_idkey = stub.Store(csci4220_hw4_pb2.KeyValue(node = None, key = this_key, value = this_value))
 
             channel.close()
             
         if input_args[0] == "QUIT":
+            for bucket in buckets:
+                for entry in bucket:
+            	    remote_hostname = str(entry.id)
+            	    remote_port = int(entry.port)
+            	    remote_addr = socket.gethostbyname(remote_hostname)
+            	    this_addr = "127.0.0.1" + ':' + str(remote_port)
+            	    channel = grpc.insecure_channel(this_addr)
+            	    stub = csci4220_hw4_pb2_grpc.KadImplStub(channel)
+
+            	    print("Letting " + remote_hostname + " know I'm quitting.")
+            	    some_idkey = stub.Quit(csci4220_hw4_pb2.IDKey(node = None, idkey = local_id))
+            	    channel.close()
+            print("Shut down node " + str(local_id))
             break
         
         
@@ -176,13 +192,25 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
     
     def Store(self, request, context):
         
-        global buckets
+        global val
+        global val_key
     
         print("storing something")
         val = request.value
-        id_in = request.key
+        val_key = request.key
         
         return csci4220_hw4_pb2.IDKey(node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = "127.0.0.1"), idkey = int(sys.argv[1]))
+
+    def Quit(self, request, context):
+    	global buckets
+    	quit_id = int(request.idkey)
+    	for i in range(4):
+    		for entry in buckets[i]:
+    			if int(entry.id) == quit_id:
+    			    buckets[i].remove(entry)
+    			    print("Evicting quitting node " + str(quit_id) + " from bucket " + str(i))
+    			    return csci4220_hw4_pb2.IDKey(node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = "127.0.0.1"), idkey = int(sys.argv[1]))
+    	print("No record of quitting node " + str(quit_id) + " in k-buckets.")
         
 if __name__ == '__main__':
     run()
