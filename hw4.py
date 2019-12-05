@@ -14,6 +14,16 @@ buckets = []
 val = None
 val_key = -1
 
+def print_bucket():
+    global buckets
+    count = 0
+    for bucket in buckets:
+        sys.stdout.write('{}:'.format(str(count)))
+        for entry in bucket:
+            sys.stdout.write(' {}:{}'.format(str(entry.id), str(entry.port)))
+        sys.stdout.write('\n')
+        count += 1
+
 def run():
     if len(sys.argv) != 4:
         print("Error, correct usage is {} [my id] [my port] [k]".format(sys.argv[0]))
@@ -42,7 +52,7 @@ def run():
     csci4220_hw4_pb2_grpc.add_KadImplServicer_to_server(KadImplServicer(), server)
     
     #listen from the port
-    server.add_insecure_port(my_address + ':' + my_port)
+    server.add_insecure_port("127.0.0.1" + ':' + my_port)
     server.start()
     
 	# Use the following code to convert a hostname to an IP and start a channel Note that every stub needs a channel attached to it When you are done with a channel you should call .close() on the channel. Submitty may kill your program if you have too many file descriptors open at the same time.
@@ -155,6 +165,13 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
     
         global buckets
     
+        bit_len = ((int(request.node.id))^(int(sys.argv[1]))).bit_length()
+        bit_len -= 1
+        print("bitlen is: " + str(bit_len))
+        if len(buckets[bit_len]) == int(sys.argv[3]):
+            buckets[bit_len].popleft()
+        buckets[bit_len].append(request.node)
+        
         print('Serving FindNode({}) request for {}'.format(str(request.idkey), str(request.node.id)))
         id_in = request.idkey
         k = int(sys.argv[3])
@@ -187,7 +204,14 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
             node_list = temp_list
         else:
             node_list = temp_list[:(k - 1)]
-            
+        
+        for bucket in buckets:
+            sys.stdout.write('{}:'.format(str(count)))
+            for entry in bucket:
+                sys.stdout.write(' {}:{}'.format(str(entry.id), str(entry.port)))
+            sys.stdout.write('\n')
+            count += 1
+        
         return csci4220_hw4_pb2.NodeList(responding_node = this_node, nodes = node_list)
     
     def Store(self, request, context):
@@ -211,6 +235,15 @@ class KadImplServicer(csci4220_hw4_pb2_grpc.KadImplServicer):
     			    print("Evicting quitting node " + str(quit_id) + " from bucket " + str(i))
     			    return csci4220_hw4_pb2.IDKey(node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = "127.0.0.1"), idkey = int(sys.argv[1]))
     	print("No record of quitting node " + str(quit_id) + " in k-buckets.")
+        count = 0
+        for bucket in buckets:
+            sys.stdout.write('{}:'.format(str(count)))
+            for entry in bucket:
+                sys.stdout.write(' {}:{}'.format(str(entry.id), str(entry.port)))
+            sys.stdout.write('\n')
+            count += 1
+            
+        return csci4220_hw4_pb2.IDKey(node = csci4220_hw4_pb2.Node(id = int(sys.argv[1]), port = int(sys.argv[2]), address = "127.0.0.1"), idkey = int(sys.argv[1]))
         
 if __name__ == '__main__':
     run()
